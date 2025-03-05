@@ -2,5 +2,5 @@ using DiscreteVectorBundles
 using Test
 
 @testset "DiscreteVectorBundles.jl" begin
-    # Write your tests here.
+    @test DiscreteVectorBundles.HelloWorld() == "Hello World, this is the DiscreteVectorBundles.jl package"
 end
