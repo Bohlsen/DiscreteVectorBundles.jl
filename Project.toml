@@ -1,0 +1,13 @@
+name = "DiscreteVectorBundles"
+uuid = "40a7776c-8983-43f8-ae74-95b7a1d97f1b"
+authors = ["Nicholas Bohlsen"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.6.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
