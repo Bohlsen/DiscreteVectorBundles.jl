@@ -51,7 +51,7 @@ function approxcocycledeath(
 end
 
 
-function approxcechcocyle(
+function approxcechcocycle(
     localtriv::LocalTriv,
     threshold::Number)
     #compute the approximate Cech cocycle from a local trivialisation
@@ -64,13 +64,15 @@ function approxcechcocyle(
         b = birth(edge)
         if b > threshold
             return cocycle
+        else
+            i,j = vertices(edge)
+            Ωij=bestorthtrans(localtriv.bases[i],localtriv.bases[j])
+            push!(cocycle,CechCocycle(edge,Ωij))
         end
-        i,j = vertices(edge)
-        Ωij=bestorthtrans(localtriv.bases[i],localtriv.bases[j])
-        push!(cocycle,CechCocycle(edge,Ωij))
     end
     return cocycle
 end
+
 
 function sw1(cocycle::Vector{CechCocycle})
     #compute the first stiefel-whitney class of a given cechcocycle
@@ -84,4 +86,49 @@ function sw1(cocycle::Vector{CechCocycle})
         end
     end
     return Ripserer.Chain{Mod{2},Ripserer.Simplex{1,Float64,Int64}}(sw)
+end
+
+
+function sw1(localtriv::LocalTriv,
+             threshold::Number)
+        #compute the first stiefel-whitney class of a given cechcocycle
+
+        cocycle = approxcechcocycle(localtriv,threshold)
+        return sw1(cocycle)
+end
+
+function eu(localtriv::LocalTriv,threshold::Number)
+    #compute the mod p reduction of the euler class from a local 
+    #trivialisation of an assumed oriented rank 2 vector bundle 
+    #at time = threshold in the filtration
+
+    cocycle = approxcechcocycle(localtriv,threshold)
+    cocyclelookup = Dict([(cechsimplex(cocycle[i]),i) for i in eachindex(cocycle)])
+
+    twoskeleton = sort(localtriv.complex[2])
+
+    eu = Vector{Ripserer.ChainElement{Ripserer.Simplex{2,Float64,Int64},Int}}(undef,0)
+    for triangle in twoskeleton
+        if birth(triangle) > threshold
+            return Ripserer.Chain{Int,Ripserer.Simplex{2,Float64,Int64}}(eu)
+        else
+            σ1,σ2,σ3 = Ripserer.boundary(localtriv.complex,triangle)
+
+            tij = transitionfunction(cocycle[cocyclelookup[σ1]])
+            tik = transitionfunction(cocycle[cocyclelookup[σ2]])
+            tjk = transitionfunction(cocycle[cocyclelookup[σ3]])
+
+            θij = atan(tij[2,1],tij[1,1])
+            θik = atan(tik[2,1],tik[1,1])
+            θjk = atan(tjk[2,1],tjk[1,1])
+
+            #compute the number of whole rotations after lifting the angle change to $
+            Δθ = round((θij-θik+θjk)/(2*π))
+            if Δθ != 0
+                chainelement = Ripserer.ChainElement{Ripserer.Simplex{2,Float64,Int64},Int}(triangle,Δθ)
+                push!(eu,chainelement)
+            end
+        end
+    end
+    return Ripserer.Chain{Int,Ripserer.Simplex{2,Float64,Int64}}(eu)
 end
