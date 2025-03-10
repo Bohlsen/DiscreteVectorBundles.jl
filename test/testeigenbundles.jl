@@ -30,7 +30,7 @@ function spherebundletest()
     sphere_alpha_complex = Alpha(spherepoints)
 
     local_triv = LocalTriv(sphere_alpha_complex,tangentbundle)
-    dth = approxcocycledeath(local_triv,1)-1e-15
+    dth = approxcocycledeath(local_triv,1)-1e-2
     orientbundle!(local_triv,dth)
 
     v1 = local_triv.bases[1][:,1]
