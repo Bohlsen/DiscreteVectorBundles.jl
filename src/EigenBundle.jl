@@ -79,7 +79,61 @@ function μ(pointcloud::Vector{Tuple{Float64, Float64, Float64}},
             fundamentalclass2 = [Ripserer.ChainElement{Ripserer.Simplex{2,Float64,Int64},Mod{p}}(simplex(triangle),-coefficient(triangle)) for triangle in fundamentalclass]
             return Ripserer.Chain{Mod{p},Ripserer.Simplex{2,Float64,Int64}}(fundamentalclass2)
         else
-            throw("H2 chain has elements which are non 1 or -1, point cloud may be faulty") 
+            throw("H2 chain has elements which are not 1 or -1, point cloud may be faulty") 
         end
 end
 
+function constructrealeigenbundle(pointcloud::Vector{<:Tuple},
+                              H::Function,
+                              branches::Vector{Int})
+        #Take a pointcloud and a self-adjoint operator and construct a local trivilisation of the discrete vector bundle 
+        #over the alpha filtration of the pointcloud. 
+
+        #Note that the eigenvectors of H will be calculated in the order indexed by their eigenvalue. 
+        #The ``branches'' input is a tuple {For example/ [1] or [2,3]} which specifies which eigenvectors 
+        #to include int the bundle by their eigenvalue order.
+
+        N = length(pointcloud)
+        complex = Alpha(pointcloud)
+        trivialbundle = [eigvecs(H(pointcloud[i])) for i in 1:N]
+        eigenbundle = [trivialbundle[i][:,branches] for i in 1:N]
+
+        return LocalTriv(complex,eigenbundle)
+end
+
+function constructcomplexeigenbundle(pointcloud::Vector{<:Tuple},
+                                     H::Function,
+                                     branch::Int)
+        #Take a pointcloud and a self-adjoint operator and construct a local trivilisation of a discrete complex line bundle 
+        #over the alpha filtration of the pointcloud returned as a real line bundle with the canonical orientation
+        #induced by the complex structure.
+
+        #Note that the eigenvectors of H will be calculated in the order indexed by their eigenvalue. 
+        #The ``branch'' input is a integer which specifies which eigenvalue we want the eigenvectors for.
+
+        N = length(pointcloud)
+        complex = Alpha(pointcloud)
+        trivialbundle = [eigvecs(H(pointcloud[i])) for i in 1:N]
+        eigenbundle = [canonicallyorientatedplane(trivialbundle[i][:,branch]) for i in 1:N]
+
+        return LocalTriv(complex,eigenbundle)
+end
+
+#Core functions describing the isomorphism from complex vector bundles to oriented real bundles
+function j(n)
+    #2nx2n matrix specifying the almost complex structure
+    return [zeros(n,n) -I(n); I(n) zeros(n,n)]
+end
+
+function comptoreal(complexvector)
+    #map a complex n vector into R^n
+    return [real(complexvector);imag(complexvector)]
+end
+
+function canonicallyorientatedplane(complexvector)
+    #take a complex vector and construct the real plane it defines (as a Stiefel matrix)
+    #given the canonical orientation induced by multiplication by j
+
+    realvec = comptoreal(complexvector)
+    return [realvec j(length(complexvector))*realvec]
+end

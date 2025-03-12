@@ -6,6 +6,8 @@ struct LocalTriv
     complex::Ripserer.AbstractFiltration{<:Integer,<:Number}
     bases::AbstractVector{<:AbstractVecOrMat}
 end
+filtration(localtriv::LocalTriv) = localtriv.complex
+bases(localtriv::LocalTriv) = localtriv.bases
 
 struct CechCocycle
     simplex::Ripserer.Simplex
