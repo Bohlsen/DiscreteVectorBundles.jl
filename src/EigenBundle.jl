@@ -119,16 +119,30 @@ function constructcomplexeigenbundle(pointcloud::Vector{<:Tuple},
         return LocalTriv(complex,eigenbundle)
 end
 
-#Core functions describing the isomorphism from complex vector bundles to oriented real bundles
-function j(n)
-    #2nx2n matrix specifying the almost complex structure
-    return [zeros(n,n) -I(n); I(n) zeros(n,n)]
-end
-
 function comptoreal(complexvector)
     #map a complex n vector into R^n
-    return [real(complexvector);imag(complexvector)]
+    realpart = real(complexvector)
+    imagpart = imag(complexvector)
+
+    realvector = zeros(2*length(complexvector))
+    for i in 1:length(complexvector)
+        realvector[2*i-1] = realpart[i]
+        realvector[2*i] = imagpart[i]
+    end
+
+    return realvector
 end
+
+function j(n)
+    #2nx2n matrix specifying the almost complex structure
+    output = zeros(2*n,2*n)
+
+    for i in 1:n
+        output[2*i-1:2*i,2*i-1:2*i] = [[0 -1]; [1 0]]
+    end
+    return output
+end
+
 
 function canonicallyorientatedplane(complexvector)
     #take a complex vector and construct the real plane it defines (as a Stiefel matrix)

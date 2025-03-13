@@ -3,6 +3,7 @@ using LinearAlgebra
 using Ripserer
 using DiscreteVectorBundles
 
+#pointcloud generating functions
 function sphere(n)
     values = rand(Xoshiro(0),Float64,(n,2))
     values[:,2] = 2*π*values[:,2]
@@ -24,6 +25,7 @@ function annulus(n, r1=1, r2=1.1, offset=(0, 0))
     return result
 end
 
+#hermitian operators to compute the characteristic classes of
 function H_mobius(n)
     return Hermitian([n[1] n[2];
                      n[2] -n[1]]) #making sure the matrix is strictly hermitian
@@ -35,13 +37,50 @@ function H_sphere(n)
 end
 
 function H_geofluid(n)
+    f = n[1]
+    kx = n[2]
+    ky = n[3]
     return Hermitian([
-        [0 n[1] n[2]];
-        [n[1] 0 n[3]*1im];
-        [n[2] -n[3]*1im 0]
+        [0 -f*1im kx];
+        [f*1im 0 ky];
+        [kx ky 0]
     ])
 end
 
+function H_dirac(n)
+    px = n[1]
+    py = n[2]
+    m = n[3]
+
+    return Hermitian([
+        [m  px-py*1im];
+        [px+py*1im -m]])
+end
+
+function H_TLCW(n,kz)
+    ωp = n[1]
+    kx = n[2]
+    ky = n[3]
+   
+    ezcross = [[0 -1 0];
+               [1 0 0];
+               [0 0 0]]
+    kcross = [[0 -kz ky];
+               [kz 0 -kx];
+               [-ky kx 0]]
+
+    Hr = [[0*I(3) 0*I(3) 0*I(3)];
+          [0*I(3) 0*I(3) -kcross];
+          [0*I(3) kcross 0*I(3)]]
+
+    Hi = [[ezcross -ωp*I(3) 0*I(3)];
+          [ωp*I(3) 0*I(3) 0*I(3)];
+          [0*I(3) 0*I(3) 0*I(3)]]
+
+    return Hr+Hi*1im
+end
+
+#tests of the discrete characterstic class calculation
 function mobiusbundletest()
     N=200
     mobius_data = annulus(N)
@@ -77,6 +116,32 @@ function spherebundletest()
     return evaluate(μS2,c1)
 end
 
+function diractest()
+        N = 200
+        spherepoints = sphere(N)
+        function orientedlocaltriv_dirac(branch)
+            localtriv = constructcomplexeigenbundle(spherepoints,H_dirac,branch)
+            dth = approxcocycledeath(localtriv,1)-1e-2
+            orientbundle!(localtriv,dth)
+            return localtriv,dth
+        end
+
+        bundles = [orientedlocaltriv_dirac(branch) for branch in 1:2]
+
+        chernnumbers = []
+        p = 3
+
+        for bundle in bundles
+            localtriv = bundle[1]
+            dth = bundle[2]
+            c1 = chaintovector(filtration(localtriv),eu(localtriv,dth),p)
+            μS2 = chaintovector(filtration(localtriv),μ(spherepoints,dth,p),p)
+            push!(chernnumbers,evaluate(μS2,c1))
+        end
+
+        return chernnumbers
+end
+
 function geofluidstest(branch)
     #chec that the chern numbers of the Weyl point in the f plane model (from geophysical fluid dynamics) are computed correctly
 
@@ -92,3 +157,55 @@ function geofluidstest(branch)
     μS2 = chaintovector(filtration(localtriv),μ(spherepoints,dth,p),p)
     return evaluate(μS2,c1)
 end
+
+function TLCWtest(branch)
+    #THIS IS CURRENTLY CONSIDERED EXPERIMENTAL as the calculation is consistent
+    #but disagrees with Fu & Qin. 
+    
+    #It is possible that Fu & Qin contains a sign error (or there exists)
+    #a subtle in the construction of the index theorem (a detailed investigation here is needed)
+
+    ωpc = 0.58
+    f = kz -> (sqrt(kz^4+4*kz^2)-kz^2)/2-ωpc
+
+    N = 50 #intentially low point count here
+    spherepoints = sphere(N)
+    spherepoints = [(0.1*point[1]+ωpc,0.1*point[2],0.1*point[3]) for point in spherepoints]
+
+    function bisection(f::Function,x0i::Number,x1i::Number,ε::Number)
+        #find a zero of a single variable real function by the bisection method.
+        #Either runs for 10000 bisections or if returns the current value if it is less that ε
+
+        #assumes the x0i and x1i are given on the negative and positive sides of the zero respectively
+
+        #NOTE THIS IS JUST FOR ONE TEST AND SHOULD NOT BE USED GENERALLY
+
+        x0 = x0i
+        x1 = x1i
+
+        for i in 1:10000
+            x = (x0+x1)/2
+            if abs(f(x))<ε
+                return x
+            elseif f(x) < 0
+                x0 = x
+            else
+                x1 = x
+            end
+        end
+        throw("Did not find root")
+    end
+
+    kz = bisection(f,0.5,1,1e-10)
+
+    localtriv = constructcomplexeigenbundle(spherepoints,n->H_TLCW(n,kz),branch)
+    dth = approxcocycledeath(localtriv,1)-1e-2
+    orientbundle!(localtriv,dth)
+
+    p = 5
+
+    c1 = chaintovector(filtration(localtriv),eu(localtriv,dth),p)
+    μS2 = chaintovector(filtration(localtriv),μ(spherepoints,dth,p),p)
+    return evaluate(μS2,c1)
+end
+
