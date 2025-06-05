@@ -13,7 +13,7 @@ Ripserer = "aa79e827-bd0b-42a8-9f10-2b302677a641"
 
 [compat]
 LinearAlgebra = "1.11.0"
-Nemo = "0.49.0"
+Nemo = "0.49.0, 0.50"
 PersistenceDiagrams = "0.9.9"
 Plots = "1.40.9"
 Random = "1.11.0"
