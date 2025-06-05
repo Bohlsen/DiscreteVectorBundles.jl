@@ -80,6 +80,16 @@ function H_TLCW(n,kz)
     return Hr+Hi*1im
 end
 
+#Helper functions for testing the extraction of the monopole index from synthetic experimental mobius_data
+function Laguerrel(n,x)
+    l=0
+    for k in 0:n
+        l += ((-1)^k*binomial(n,k)/factorial(k))*x^k
+    end
+    return l
+end
+
+
 #tests of the discrete characterstic class calculation
 function mobiusbundletest()
     N=200
