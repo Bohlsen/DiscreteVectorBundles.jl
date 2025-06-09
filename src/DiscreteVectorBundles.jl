@@ -33,6 +33,7 @@ export geometricorientation
 export μ
 export constructrealeigenbundle
 export constructcomplexeigenbundle
+export canonicallyorientatedplane
 include("EigenBundle.jl")
 
 export orientbundle!

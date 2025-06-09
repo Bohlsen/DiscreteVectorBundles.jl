@@ -81,14 +81,100 @@ function H_TLCW(n,kz)
 end
 
 #Helper functions for testing the extraction of the monopole index from synthetic experimental mobius_data
-function Laguerrel(n,x)
+function laguerrel(n,x)
+    #Computes the n'th Lagurre polynonmial. 
+    #NOTE: THIS IS NOT A FAST OR EFFICIENT ROUTINE AND SHOULD ONLY BE USED FOR SMALL n<=20
     l=0
     for k in 0:n
-        l += ((-1)^k*binomial(n,k)/factorial(k))*x^k
+        l += (((-1)^k)*binomial(n,k)/factorial(k))*x^k
     end
     return l
 end
 
+function hermiteW(n,x,k)
+    #Compute the Wigner distribution of a Hermite function
+    return ((-1)^n/π)*exp(-(x^2+k^2))*laguerrel(n,2*(x^2+k^2))
+end
+
+function dirac2DWignerMatrix(n,x,k,λ)
+    #Compute the exact Wigner matrix for each mode in the 2D Dirac equation with space varying mass. 
+    ωn = sqrt(λ^2+2*n)
+    W11 = (2*n/(ωn-λ))*hermiteW(n,x,k)
+    W22 = (ωn-λ)*hermiteW(n-1,x,k)
+    W12 = ((1im*n*(x-1im*k))/(x^2+k^2))*(hermiteW(n,x,k)+hermiteW(n-1,x,k))
+    W21 = conj(W12)
+    return (1/(2*ωn))* Hermitian([[W11 W12];
+                                  [W21 W22]])
+end
+
+function dirac2DWignerMatrixSemiclassical(x,k,λ)
+    #Compute the semiclassical Wigner matrix for each mode in the 2D Dirac equation with space varying mass. 
+    ωn = sqrt(λ^2+x^2+k^2)
+    W11 = (x^2+k^2)/(ωn-λ)
+    W22 = ωn-λ
+    W12 = 1im*(x-1im*k)
+    W21 = conj(W12)
+    return 1/(2*ωn)* Hermitian([[W11 W12];
+                                [W21 W22]])
+end
+
+function dirac2Dsample(ω,anglesamples=10)
+    #Generate the pointcloud and eigenvectors for a synthetic data sample of the 2D dirac equation at a fixed frequency
+    #We take 10 angular samples each time as a default (sort of randomly).
+
+    λ = n->√(ω^2-2*n) #λ where the solution has nonzero ω support
+    r = n->√(2*n)     #radius of the classical trajectory in (x,k). Really ω^2=λ(n)^2+x^2+k^2 but this reduces as shown
+
+    pointcloud = []
+    eigenvectors = []
+
+    #Generating the point cloud
+
+    #start at n = 1 and run until the maximum n is reached
+    n = 1
+    while ω^2-2*n > 0
+        #We generate the + and - λ(n) samples simultaneously
+
+        ϕ = π*rand(Xoshiro(n)) #generate a random phase to shift the sample by
+        θ = π*rand(Xoshiro(-n)) #generate a random phase to shift the sample by
+        for i in range(1,anglesamples)
+            #positive case
+            x = r(n)*cos(i*2*π/anglesamples+ϕ)
+            k = r(n)*sin(i*2*π/anglesamples+ϕ)
+            push!(pointcloud,(x,k,λ(n)))
+            M= dirac2DWignerMatrix(n,x,k,λ(n))/opnorm(dirac2DWignerMatrix(n,x,k,λ(n)))
+            eigensystem = eigen(M,sortby= λ-> -abs(λ))
+            v = eigensystem.vectors[:,1]
+            push!(eigenvectors,canonicallyorientatedplane(v))
+
+            #negative case
+            x = r(n)*cos(i*2*π/anglesamples+θ)
+            k = r(n)*sin(i*2*π/anglesamples+θ)
+            push!(pointcloud,(x,k,-λ(n)))
+            M= dirac2DWignerMatrix(n,x,k,-λ(n))/opnorm(dirac2DWignerMatrix(n,x,k,-λ(n)))
+            eigensystem = eigen(M,sortby= λ-> -abs(λ))
+            v = eigensystem.vectors[:,1]
+            push!(eigenvectors,canonicallyorientatedplane(v))
+
+        end
+        n += 1
+    end
+
+    return [pointcloud[i] for i in 1:length(pointcloud)],[eigenvectors[i] for i in 1:length(eigenvectors)]
+end
+
+function error_simpletest(r,n,λ) 
+    M= dirac2DWignerMatrix(n,r,0,λ)/opnorm(dirac2DWignerMatrix(n,r,0,λ))
+    return opnorm(M*M-M)
+end
+
+function error(r,n,λ) 
+    M= dirac2DWignerMatrix(n,r,0,λ)/opnorm(dirac2DWignerMatrix(n,r,0,λ))
+    eigensystem = eigen(M,sortby= λ-> -abs(λ))
+    v = eigensystem.vectors[:,1]
+    P = v*v'
+    return opnorm(M-P)
+end
 
 #tests of the discrete characterstic class calculation
 function mobiusbundletest()
@@ -219,3 +305,18 @@ function TLCWtest(branch)
     return evaluate(μS2,c1)
 end
 
+function dirac2DWignermatrixsampletest()
+    ω = 5
+
+    pc,eigs = dirac2Dsample(ω)
+
+    sphere_alpha_complex = Alpha(pc)
+    local_triv = LocalTriv(sphere_alpha_complex,eigs)
+    dth = approxcocycledeath(local_triv,1)-1e-2
+    orientbundle!(local_triv,dth)
+
+    p = 7
+    c1 = chaintovector(sphere_alpha_complex,eu(local_triv,dth),p)
+    μS2 = chaintovector(sphere_alpha_complex,μ(pc,dth,p),p)
+    return evaluate(μS2,c1)
+end

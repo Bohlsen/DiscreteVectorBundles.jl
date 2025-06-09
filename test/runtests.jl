@@ -28,4 +28,6 @@ using Test
     @test TLCWtest(7) == 1
     @test TLCWtest(8) == 0
     @test TLCWtest(9) == 0
+
+    @test dirac2DWignermatrixsampletest() == -1
 end
