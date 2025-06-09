@@ -262,44 +262,19 @@ function TLCWtest(branch)
     #a subtle in the construction of the index theorem (a detailed investigation here is needed)
 
     ωpc = 0.58
-    f = kz -> (sqrt(kz^4+4*kz^2)-kz^2)/2-ωpc
+    kz = ωpc/√(1-ωpc)
 
     N = 50 #intentially low point count here
     spherepoints = sphere(N)
     spherepoints = [(0.1*point[1]+ωpc,0.1*point[2],0.1*point[3]) for point in spherepoints]
 
-    function bisection(f::Function,x0i::Number,x1i::Number,ε::Number)
-        #find a zero of a single variable real function by the bisection method.
-        #Either runs for 10000 bisections or if returns the current value if it is less that ε
 
-        #assumes the x0i and x1i are given on the negative and positive sides of the zero respectively
-
-        #NOTE THIS IS JUST FOR ONE TEST AND SHOULD NOT BE USED GENERALLY
-
-        x0 = x0i
-        x1 = x1i
-
-        for i in 1:10000
-            x = (x0+x1)/2
-            if abs(f(x))<ε
-                return x
-            elseif f(x) < 0
-                x0 = x
-            else
-                x1 = x
-            end
-        end
-        throw("Did not find root")
-    end
-
-    kz = bisection(f,0.5,1,1e-10)
 
     localtriv = constructcomplexeigenbundle(spherepoints,n->H_TLCW(n,kz),branch)
     dth = approxcocycledeath(localtriv,1)-1e-2
     orientbundle!(localtriv,dth)
 
     p = 5
-
     c1 = chaintovector(filtration(localtriv),eu(localtriv,dth),p)
     μS2 = chaintovector(filtration(localtriv),μ(spherepoints,dth,p),p)
     return evaluate(μS2,c1)
