@@ -29,5 +29,7 @@ using Test
     @test TLCWtest(8) == 0
     @test TLCWtest(9) == 0
 
-    @test dirac2DWignermatrixsampletest() == -1
+    @test dirac2DWignermatrixsampletest(2) == 0
+    @test dirac2DWignermatrixsampletest(2.1) == -1
+    @test dirac2DWignermatrixsampletest(5) == -1
 end

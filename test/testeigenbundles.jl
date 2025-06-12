@@ -280,9 +280,7 @@ function TLCWtest(branch)
     return evaluate(μS2,c1)
 end
 
-function dirac2DWignermatrixsampletest()
-    ω = 5
-
+function dirac2DWignermatrixsampletest(ω)
     pc,eigs = dirac2Dsample(ω)
 
     sphere_alpha_complex = Alpha(pc)
